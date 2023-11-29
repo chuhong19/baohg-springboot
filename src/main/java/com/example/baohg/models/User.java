@@ -34,6 +34,10 @@ public class User {
     @Builder.Default
     public Set<Role> roles = new HashSet<>();
 
+//    @OneToMany(mappedBy = "author", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "author")
+    private Set<Post> posts = new HashSet<>();
+
     public User(String username, String email, String password) {
         this.username = username;
         this.email = email;

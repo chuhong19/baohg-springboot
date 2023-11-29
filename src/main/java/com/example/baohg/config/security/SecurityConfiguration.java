@@ -11,6 +11,7 @@ import org.springframework.security.authentication.dao.DaoAuthenticationProvider
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.authentication.configurers.userdetails.DaoAuthenticationConfigurer;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -23,6 +24,7 @@ import static org.springframework.security.config.Customizer.withDefaults;
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 public class SecurityConfiguration  {
     @Autowired
     UserDetailsServiceImpl userDetailsService;
@@ -55,7 +57,7 @@ public class SecurityConfiguration  {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeRequests(authorize -> {
-                    authorize.requestMatchers("/auth/login", "/auth/register").permitAll()
+                    authorize.requestMatchers("/auth/login", "/auth/register", "/test/all").permitAll()
                             .anyRequest().authenticated();
                 });
 //                .formLogin(withDefaults())
