@@ -38,6 +38,9 @@ public class User {
     @OneToMany(mappedBy = "author")
     private Set<Post> posts = new HashSet<>();
 
+    @Column(name = "friend_id")
+    public Set<Long> friends = new HashSet<>();
+
     public User(String username, String email, String password) {
         this.username = username;
         this.email = email;
@@ -49,6 +52,17 @@ public class User {
     }
     public void setRoles(Set<Role> roles) {
         this.roles = roles;
+    }
+
+    public void setFriend(Long friendId) {
+        if (this.friends == null) {
+            this.friends = new HashSet<>();
+        }
+        this.friends.add(friendId);
+    }
+
+    public void removeFriend(Long friendId) {
+        friends.remove(friendId);
     }
 }
 
