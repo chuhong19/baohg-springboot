@@ -26,6 +26,9 @@ public class TestController {
     public String userAccess() {
         return "User Content.";
     }
+    @GetMapping("/seller")
+    @PreAuthorize("hasRole('ROLE_SELLER') or hasRole('ROLE_ADMIN')")
+    public String sellerAccess() { return "Seller Content."; }
     @GetMapping("/admin")
     @PreAuthorize("hasRole('ROLE_ADMIN')")
     public String adminAccess() {

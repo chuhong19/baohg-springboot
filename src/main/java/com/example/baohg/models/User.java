@@ -26,6 +26,7 @@ public class User {
     public String username;
     public String email;
     public String password;
+    public Long balance;
 
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(name = "user_roles",
@@ -65,4 +66,3 @@ public class User {
         friends.remove(friendId);
     }
 }
-
