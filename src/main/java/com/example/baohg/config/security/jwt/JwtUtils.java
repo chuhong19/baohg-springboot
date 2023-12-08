@@ -44,7 +44,7 @@ public class JwtUtils {
             return true;
         } catch (Exception e) {
             // Use logger ...
-            System.out.println("Error JWT");
+            System.out.println("JwtUtils: Error JWT");
         }
         return false;
     }

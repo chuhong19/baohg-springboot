@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Date;
 import java.util.List;
 
+@CrossOrigin(origins = "http://localhost:3000", maxAge = 3600)
 @RestController
 @RequestMapping("/api/posts")
 public class PostController {
@@ -49,7 +50,7 @@ public class PostController {
         String username = authentication.getName();
 
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found with username: " + username));
+                .orElseThrow(() -> new RuntimeException("PostController: User not found with username: " + username));
 
         post.setAuthor(user);
         post.setCreatedAt(new Date());
@@ -74,10 +75,10 @@ public class PostController {
                         return response;
                     });
         } catch (Exception ex) {
-            response.setMessage("Post not found");
+            response.setMessage("PostController: Post not found");
             return response;
         }
-        response.setMessage("Error...");
+        response.setMessage("PostController: Internal error");
         return response;
     }
 
