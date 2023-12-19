@@ -55,7 +55,6 @@ public class TransactionController {
 
     }
 
-    // createTz(productId) by user
     @PostMapping("/create/{id}")
     public MessageResponse createTransaction(@PathVariable Long id, @RequestBody TransactionRequest request){
 
@@ -88,7 +87,7 @@ public class TransactionController {
         MessageResponse messageResponse = new MessageResponse("TransactionController: Transaction created with your information: " + transaction);
         return messageResponse;
     }
-    // confirmTz(tzId) by user
+
     @GetMapping("/confirm/{id}")
     public MessageResponse confirmTransaction(@PathVariable Long id) {
 
@@ -119,9 +118,36 @@ public class TransactionController {
         transactionRepository.save(transaction);
         MessageResponse messageResponse = new MessageResponse("TransactionController: Transaction confirmed with id = " + id);
         return messageResponse;
-
     }
-    // removeTz(tzId) by seller
 
+    // removeTz(tzId) by seller
+    @DeleteMapping("/decline/{id}")
+    public MessageResponse declineTransaction(@PathVariable Long id) {
+
+        Transaction transaction = transactionRepository.findById(id).orElseThrow(() -> {
+            MessageResponse messageResponse = new MessageResponse("TransactionController: Transaction not found with id: " + id);
+            return new RuntimeException(messageResponse.getMessage());
+        });
+        // Check only seller can decline
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String sellerName = authentication.getName();
+        User seller = userRepository.findByUsername(sellerName)
+                .orElseThrow(() -> new RuntimeException("TransactionController: Seller not found with username: " + sellerName));
+        if (seller != transaction.getSeller()) {
+            throw new ValidateException("TransactionController: Only the seller can decline this transaction");
+        }
+        // Check confirm = false
+        if (transaction.isConfirmed()) {
+            throw new LogicException("TransactionController: This transaction already confirmed");
+        }
+        // Transfer balance
+        User buyer = transaction.getBuyer();
+        Long buyerId = buyer.getId();
+        Long price = transaction.getPrice();
+        userService.addBalance(buyerId, price);
+        transactionRepository.deleteById(id);
+        MessageResponse messageResponse = new MessageResponse("TransactionController: Transaction declined with id = " + id);
+        return messageResponse;
+    }
 
 }

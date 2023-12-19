@@ -1,5 +1,6 @@
 package com.example.baohg.controllers;
 
+import com.example.baohg.dto.ApiResponse;
 import com.example.baohg.dto.MessageResponse;
 import com.example.baohg.models.Post;
 import com.example.baohg.models.Product;
@@ -42,11 +43,26 @@ public class ProductController {
         return ResponseEntity.ok().body("Seller route");
     }
 
+//    @GetMapping("/viewall")
+//    @PreAuthorize("hasRole('ROLE_USER') or hasRole('ROLE_SELLER') or hasRole('ROLE_ADMIN')")
+//    public ResponseEntity<List<Product>> getAllProducts() {
+//        List<Product> products = productService.getAllProducts();
+//        return ResponseEntity.ok(products);
+//    }
+
+    @GetMapping("/")
+    public ApiResponse getAllMyProducts() {
+        List<Product> products = productService.getAllProducts();
+        ApiResponse response = new ApiResponse(true, "View all products", products);
+        return response;
+    }
+
     @GetMapping("/viewall")
     @PreAuthorize("hasRole('ROLE_USER') or hasRole('ROLE_SELLER') or hasRole('ROLE_ADMIN')")
-    public ResponseEntity<List<Product>> getAllProducts() {
+    public ApiResponse getAllProducts() {
         List<Product> products = productService.getAllProducts();
-        return ResponseEntity.ok(products);
+        ApiResponse response = new ApiResponse(true, "View all products", products);
+        return response;
     }
 
     @PostMapping("/create")
