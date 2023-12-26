@@ -9,7 +9,6 @@ import com.example.baohg.repository.RoleRepository;
 import com.example.baohg.repository.UserRepository;
 import com.example.baohg.services.LogoutService;
 import com.example.baohg.services.UserDetailsImpl;
-import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -57,20 +56,23 @@ public class AuthController {
                 jwtToken = headerAuth.split(" ")[1].trim();
             }
             String username = jwtUtils.getUsernameFromJwtToken(jwtToken);
-            return ResponseEntity.ok(new UserResponse(true, "Check successfully!", username));
+            User user = userRepository.findByUsername(username)
+                    .orElseThrow(() -> new RuntimeException("UserDetailsServiceImpl: Username not found"));
+            UserInfo userInfo = new UserInfo(user.getUsername(), user.getEmail(), user.getBalance());
+            return ResponseEntity.ok(new UserResponse(true, "Check successfully!", userInfo));
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(new ApiResponse(false, "AuthController: Error: Not authenticated!"));
+            return ResponseEntity.badRequest().body(new SuccessResponse(false, "AuthController: Error: Not authenticated!"));
         }
     }
 
     @PostMapping("/register")
     public ResponseEntity<?> registerUser(@RequestBody RegisterRequest signUpRequest) {
         if (userRepository.existsByUsername(signUpRequest.getUsername())) {
-            return ResponseEntity.badRequest().body(new ApiResponse(false, "AuthController: Error: Username is already taken!"));
+            return ResponseEntity.badRequest().body(new SuccessResponse(false, "AuthController: Error: Username is already taken!"));
         }
 
         if (userRepository.existsByEmail(signUpRequest.getEmail())) {
-            return ResponseEntity.badRequest().body(new ApiResponse(false, "AuthController: Error: Email is already in use!"));
+            return ResponseEntity.badRequest().body(new SuccessResponse(false, "AuthController: Error: Email is already in use!"));
         }
 
         User user = new User(signUpRequest.getUsername(),
@@ -109,7 +111,7 @@ public class AuthController {
 
         user.setRoles(roles);
         userRepository.save(user);
-        return ResponseEntity.ok(new ApiResponse(true, "User registered successfully!"));
+        return ResponseEntity.ok(new SuccessResponse(true, "User registered successfully!"));
     }
 
 
@@ -127,12 +129,12 @@ public class AuthController {
                     .map(item -> item.getAuthority())
                     .collect(Collectors.toList());
 
-            return ResponseEntity.ok(new ApiResponse(true, "Login success", new JwtResponse(jwt,
+            return ResponseEntity.ok(new SuccessResponse(true, "Login success", new JwtResponse(jwt,
                     userDetails.getUsername(),
                     userDetails.getEmail(),
                     roles)));
         } catch (BadCredentialsException e) {
-            ApiResponse response = new ApiResponse(false, "AuthController: Wrong username or password");
+            SuccessResponse response = new SuccessResponse(false, "AuthController: Wrong username or password");
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
         }
     }
@@ -143,4 +145,5 @@ public class AuthController {
         System.out.println("Logout success");
         return "redirect:/login";
     }
+
 }

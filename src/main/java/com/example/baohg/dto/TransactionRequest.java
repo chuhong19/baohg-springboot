@@ -8,7 +8,7 @@ import lombok.*;
 @AllArgsConstructor
 @NoArgsConstructor
 public class TransactionRequest {
-    public Long phoneNumber;
+    public String phoneNumber;
     public String address;
     public String message;
 }

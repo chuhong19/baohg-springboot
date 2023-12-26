@@ -9,8 +9,8 @@ import lombok.NoArgsConstructor;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class UserResponse {
-    public boolean success;
-    public String message;
-    public UserInfo user;
+public class UserInfo {
+    public String username;
+    public String email;
+    public Long balance;
 }

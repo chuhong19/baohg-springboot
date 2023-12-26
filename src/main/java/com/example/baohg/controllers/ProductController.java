@@ -1,8 +1,8 @@
 package com.example.baohg.controllers;
 
-import com.example.baohg.dto.ApiResponse;
+import com.example.baohg.dto.SuccessResponse;
 import com.example.baohg.dto.MessageResponse;
-import com.example.baohg.models.Post;
+import com.example.baohg.dto.ProductShort;
 import com.example.baohg.models.Product;
 import com.example.baohg.models.User;
 import com.example.baohg.repository.ProductRepository;
@@ -18,6 +18,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Date;
 import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 @CrossOrigin(origins = "http://localhost:3000", maxAge = 3600)
 @RestController
@@ -43,25 +45,29 @@ public class ProductController {
         return ResponseEntity.ok().body("Seller route");
     }
 
-//    @GetMapping("/viewall")
-//    @PreAuthorize("hasRole('ROLE_USER') or hasRole('ROLE_SELLER') or hasRole('ROLE_ADMIN')")
-//    public ResponseEntity<List<Product>> getAllProducts() {
-//        List<Product> products = productService.getAllProducts();
-//        return ResponseEntity.ok(products);
-//    }
-
-    @GetMapping("/")
-    public ApiResponse getAllMyProducts() {
+    @GetMapping("/allProduct")
+    @PreAuthorize("hasRole('ROLE_USER') or hasRole('ROLE_SELLER') or hasRole('ROLE_ADMIN')")
+    public SuccessResponse getAllProducts() {
         List<Product> products = productService.getAllProducts();
-        ApiResponse response = new ApiResponse(true, "View all products", products);
+        List<ProductShort> outputProducts =
+        products.stream()
+                .map(ProductShort::new)
+                .collect(Collectors.toList());
+        SuccessResponse response = new SuccessResponse(true, "View all products", outputProducts);
         return response;
     }
 
-    @GetMapping("/viewall")
-    @PreAuthorize("hasRole('ROLE_USER') or hasRole('ROLE_SELLER') or hasRole('ROLE_ADMIN')")
-    public ApiResponse getAllProducts() {
+    @GetMapping("/myProduct")
+    public SuccessResponse getAllMyProducts() {
         List<Product> products = productService.getAllProducts();
-        ApiResponse response = new ApiResponse(true, "View all products", products);
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String username = authentication.getName();
+        List<ProductShort> outputProducts =
+                products.stream()
+                        .filter(product -> username.equals(product.getSeller().getUsername()))
+                        .map(ProductShort::new)
+                        .collect(Collectors.toList());
+        SuccessResponse response = new SuccessResponse(true, "View my products", outputProducts);
         return response;
     }
 
@@ -76,7 +82,6 @@ public class ProductController {
 
         product.setSeller(user);
         product.setCreatedAt(new Date());
-
         Product savedProduct = productRepository.save(product);
 
         MessageResponse messageResponse = new MessageResponse("ProductController: Product created with seller: " + username);
@@ -85,7 +90,6 @@ public class ProductController {
 
     @PutMapping("/update/{id}")
     public MessageResponse updateProduct(@PathVariable Long id, @RequestBody Product updatedProduct) {
-
 
         MessageResponse response = new MessageResponse("");
         try {
@@ -113,4 +117,23 @@ public class ProductController {
         MessageResponse messageResponse = new MessageResponse("Product deleted by id: " + id);
         return messageResponse;
     }
+
+    @GetMapping("/details/{id}")
+    public SuccessResponse getDetailsProductById(@PathVariable Long id) {
+        try {
+            Optional<Product> product = productService.getProductById(id);
+            if (product.isPresent()) {
+                ProductShort productShort = ProductShort.fromProduct(product.get());
+                SuccessResponse successResponse = new SuccessResponse(true, "Product details", productShort);
+                return successResponse;
+            } else {
+                SuccessResponse successResponse = new SuccessResponse(false, "Product not found");
+                return successResponse;
+            }
+        } catch (Exception ex) {
+            SuccessResponse successResponse = new SuccessResponse(false, "Error retrieving product details");
+            return successResponse;
+        }
+    }
+
 }
