@@ -1,7 +1,6 @@
 package com.example.baohg.controllers;
 
-import com.example.baohg.dto.MessageResponse;
-import com.example.baohg.dto.TransactionRequest;
+import com.example.baohg.dto.*;
 import com.example.baohg.exception.LogicException;
 import com.example.baohg.exception.ValidateException;
 import com.example.baohg.models.Product;
@@ -24,7 +23,9 @@ import java.sql.Time;
 import java.time.LocalDate;
 import java.time.temporal.Temporal;
 import java.util.Date;
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @CrossOrigin(origins = "http://localhost:3000", maxAge = 3600)
 @RestController
@@ -52,12 +53,49 @@ public class TransactionController {
         String name = authentication.getName();
         Optional<User> user = userRepository.findByUsername(name);
         System.out.println("user: " + user);
-
     }
 
-    // createTz(productId) by user
+    @GetMapping("/allTransaction")
+    public SuccessResponse getAllTransaction(){
+        List<Transaction> transactions = transactionService.getAllTransactions();
+        List<TransactionShort> outputTransactions =
+                transactions.stream()
+                        .map(TransactionShort::new)
+                        .collect(Collectors.toList());
+        SuccessResponse response = new SuccessResponse(true, "View all transactions", outputTransactions);
+        return response;
+    }
+
+    @GetMapping("/allBuyTransaction")
+    public SuccessResponse getAllBuyTransaction() {
+        List<Transaction> transactions = transactionService.getAllTransactions();
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String username = authentication.getName();
+        List<TransactionShort> outputTransactions =
+                transactions.stream()
+                        .filter(transaction -> username.equals(transaction.getBuyer().getUsername()))
+                        .map(TransactionShort::new)
+                        .collect(Collectors.toList());
+        SuccessResponse response = new SuccessResponse(true, "View all buy transactions", outputTransactions);
+        return response;
+    }
+
+    @GetMapping("/allSellTransaction")
+    public SuccessResponse getAllSellTransaction() {
+        List<Transaction> transactions = transactionService.getAllTransactions();
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String username = authentication.getName();
+        List<TransactionShort> outputTransactions =
+                transactions.stream()
+                        .filter(transaction -> username.equals(transaction.getSeller().getUsername()))
+                        .map(TransactionShort::new)
+                        .collect(Collectors.toList());
+        SuccessResponse response = new SuccessResponse(true, "View all sell transactions", outputTransactions);
+        return response;
+    }
+
     @PostMapping("/create/{id}")
-    public MessageResponse createTransaction(@PathVariable Long id, @RequestBody TransactionRequest request){
+    public SuccessResponse createTransaction(@PathVariable Long id, @RequestBody TransactionRequest request){
 
         Product targetProduct = productRepository.findById(id)
                 .orElseThrow(() -> {
@@ -71,26 +109,27 @@ public class TransactionController {
         User seller = targetProduct.getSeller();
         // Check buyer != seller
         if (seller == buyer) {
-            throw new ValidateException("TransactionController: Are you ok bro? You can't buy your product!!!");
+            SuccessResponse successResponse = new SuccessResponse(false, "TransactionController: You can't buy your product!!!");
+            return successResponse;
         }
         if (buyer.getBalance() < targetProduct.getPrice()) {
-            MessageResponse messageResponse = new MessageResponse("TransactionController: You don't have enough money to perform this transaction");
-            return messageResponse;
+            SuccessResponse successResponse = new SuccessResponse(false, "TransactionController: You don't have enough money to perform this transaction");
+            return successResponse;
         }
         Long price = targetProduct.getPrice();
-        Long buyerPhoneNumber = request.getPhoneNumber();
+        String buyerPhoneNumber = request.getPhoneNumber();
         String buyerAddress = request.getAddress();
         String buyerMessage = request.getMessage();
         Long buyerId = buyer.getId();
         userService.removeBalance(buyerId, price);
         Transaction transaction = new Transaction(targetProduct, buyer, seller, price, buyerPhoneNumber, buyerAddress, buyerMessage);
         transactionRepository.save(transaction);
-        MessageResponse messageResponse = new MessageResponse("TransactionController: Transaction created with your information: " + transaction);
-        return messageResponse;
+        SuccessResponse successResponse = new SuccessResponse(true, "TransactionController: Transaction created with your information: " + transaction);
+        return successResponse;
     }
-    // confirmTz(tzId) by user
+
     @GetMapping("/confirm/{id}")
-    public MessageResponse confirmTransaction(@PathVariable Long id) {
+    public SuccessResponse confirmTransaction(@PathVariable Long id) {
 
         Transaction transaction = transactionRepository.findById(id).orElseThrow(() -> {
             MessageResponse messageResponse = new MessageResponse("TransactionController: Transaction not found with id: " + id);
@@ -115,13 +154,39 @@ public class TransactionController {
         userService.addBalance(sellerId, price);
         transaction.setConfirmed(true);
         transaction.setConfirmedAt(new Date());
-        System.out.println("Transaction: " + transaction);
         transactionRepository.save(transaction);
-        MessageResponse messageResponse = new MessageResponse("TransactionController: Transaction confirmed with id = " + id);
-        return messageResponse;
-
+        SuccessResponse successResponse = new SuccessResponse(true, "TransactionController: Transaction confirmed with id = " + id);
+        return successResponse;
     }
-    // removeTz(tzId) by seller
 
+    // removeTz(tzId) by seller
+    @DeleteMapping("/decline/{id}")
+    public MessageResponse declineTransaction(@PathVariable Long id) {
+
+        Transaction transaction = transactionRepository.findById(id).orElseThrow(() -> {
+            MessageResponse messageResponse = new MessageResponse("TransactionController: Transaction not found with id: " + id);
+            return new RuntimeException(messageResponse.getMessage());
+        });
+        // Check only seller can decline
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String sellerName = authentication.getName();
+        User seller = userRepository.findByUsername(sellerName)
+                .orElseThrow(() -> new RuntimeException("TransactionController: Seller not found with username: " + sellerName));
+        if (seller != transaction.getSeller()) {
+            throw new ValidateException("TransactionController: Only the seller can decline this transaction");
+        }
+        // Check confirm = false
+        if (transaction.isConfirmed()) {
+            throw new LogicException("TransactionController: This transaction already confirmed");
+        }
+        // Transfer balance
+        User buyer = transaction.getBuyer();
+        Long buyerId = buyer.getId();
+        Long price = transaction.getPrice();
+        userService.addBalance(buyerId, price);
+        transactionRepository.deleteById(id);
+        MessageResponse messageResponse = new MessageResponse("TransactionController: Transaction declined with id = " + id);
+        return messageResponse;
+    }
 
 }
